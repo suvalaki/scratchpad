@@ -76,9 +76,6 @@ if __name__ == "__main__":
         # scopes=["https://www.googleapis.com/auth/cloud-platform"],
     )
 
-    # Give service account access to bucket
-    # gsutil iam ch serviceAccount:my-service-account@project.iam.gserviceaccount.com:objectAdmin gs://my-project/my-bucket
-
     from google.cloud import storage
     from google.cloud import aiplatform
     from utils.context_managers import TemporaryBucket
@@ -89,14 +86,8 @@ if __name__ == "__main__":
     # client = storage.Client(credentials=credentials)
     client = storage.Client.from_service_account_json(service_account_path)
     ai = aiplatform.init(credentials=credentials)
-    # with TemporaryBucket(client, TEMPORARY_BUCKET_NAME) as temp_bucket:
-    temp_bucket = TemporaryBucket(
-        credentials, client, TEMPORARY_BUCKET_NAME
-    ).__enter__()
-    storage_path = Path(TEMPORARY_BUCKET_NAME) / FOLDER_NAME
-    # blob = temp_bucket.bucket.blob(FOLDER_NAME + "/")
-    # blob.upload_from_string("")
+    with TemporaryBucket(credentials, client, TEMPORARY_BUCKET_NAME) as temp_bucket:
+        storage_path = Path(TEMPORARY_BUCKET_NAME) / FOLDER_NAME
 
-    create_and_submit_pipeline(storage_path, credentials)
-    print(temp_bucket._bucket_name)
-    temp_bucket.bucket.delete(force=True)
+        create_and_submit_pipeline(storage_path, credentials)
+        print(temp_bucket._bucket_name)
