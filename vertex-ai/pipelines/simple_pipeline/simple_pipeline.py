@@ -4,6 +4,8 @@ import logging
 from kfp.v2 import dsl
 from kfp.v2 import compiler
 
+from google.cloud import aiplatform
+
 
 @dsl.component(
     base_image="python:3.10",
@@ -56,9 +58,15 @@ def create_and_submit_pipeline(storage_path: Path, credentials):
         credentials=credentials,
     )
 
-    job.run()
-    job.wait()
+    try:
+        job.run()
+        job.wait()
+    except Exception as e:
+        print(e)
 
+
+TEMPORARY_BUCKET_NAME = "suvalaki-temporary-bucket"
+FOLDER_NAME = "simple-pipeline"
 
 if __name__ == "__main__":
 
@@ -76,18 +84,25 @@ if __name__ == "__main__":
         # scopes=["https://www.googleapis.com/auth/cloud-platform"],
     )
 
+    # Alternative credentials
+    import google.auth
+
+    credentials, project_id = google.auth.default()
+
     from google.cloud import storage
     from google.cloud import aiplatform
     from utils.context_managers import TemporaryBucket
 
-    TEMPORARY_BUCKET_NAME = "suvalaki-temporary-bucket"
-    FOLDER_NAME = "simple-pipeline"
-
-    # client = storage.Client(credentials=credentials)
-    client = storage.Client.from_service_account_json(service_account_path)
+    client = storage.Client(credentials=credentials)
+    # client = storage.Client.from_service_account_json(service_account_path)
     ai = aiplatform.init(credentials=credentials)
     with TemporaryBucket(credentials, client, TEMPORARY_BUCKET_NAME) as temp_bucket:
         storage_path = Path(TEMPORARY_BUCKET_NAME) / FOLDER_NAME
 
         create_and_submit_pipeline(storage_path, credentials)
         print(temp_bucket._bucket_name)
+
+        # BY default pipeline jobs use the default service account for a project
+        # {PROJECT_NUMBER}-compute@developer.gserviceaccount.com
+        # In order to give the default credentials access to our new bucket we need
+        # to run the script over it
